@@ -11,7 +11,8 @@ using StudentCourseAPI.Models;
 
 namespace StudentCourseAPI.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
+    [ApiController]
     public class StudentsController : ControllerBase
     {
         private readonly IStudentRepository _studentRepository;
@@ -21,28 +22,28 @@ namespace StudentCourseAPI.Controllers
             _studentRepository = studentRepository;
         }
 
-        [HttpGet]
+        [HttpGet("getAllStudents")]
         [Authorize(Roles = "Admin,Instructor")]
         public async Task<IActionResult> GetAllStudents()
         {
             return Ok(await _studentRepository.GetAllAsync());
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("GetStudentById/{id}")]
         public async Task<IActionResult> GetStudentById(int id)
         {
             var student = await _studentRepository.GetByIdAsync(id);
             return student == null ? NotFound() : Ok(student);
         }
 
-        [HttpPost]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateStudent(Student student) 
+        [HttpPost("createStudent")]
+        [Authorize]
+        public async Task<ActionResult> CreateStudent([FromBody] Student student) 
         {
             return Ok(await _studentRepository.AddAsync(student));
         } 
 
-        [HttpPut("{id}")]
+        [HttpPut("updateStudent/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateStudent(int id, Student student)
         {
@@ -50,7 +51,7 @@ namespace StudentCourseAPI.Controllers
             return Ok(await _studentRepository.UpdateAsync(student));
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("deleteStudent/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteStudent(int id)
         {

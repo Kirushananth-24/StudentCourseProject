@@ -12,12 +12,10 @@ namespace StudentCourseAPI.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ITokenService _tokenService;
-        private readonly IEmailService _emailService;
 
-        public AuthService(UserManager<ApplicationUser> userManager, IEmailService emailService, ITokenService tokenService)
+        public AuthService(UserManager<ApplicationUser> userManager, ITokenService tokenService)
         {
             _userManager = userManager;
-            _emailService = emailService;
             _tokenService = tokenService;
         }
 
@@ -49,13 +47,13 @@ namespace StudentCourseAPI.Services
             // Generate email confirmation token
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            var confirmationLink = $"{registerDto.ClientURI}?userId={user.Id}&token={System.Net.WebUtility.UrlEncode(token)}";
-
-            // Send confirmation email
-            await _emailService.SendEmailAsync(user.Email, "Confirm your email",
-                $"Please confirm your account by clicking this link: {confirmationLink}");
-
-            return new AuthResponseDto { IsAuthSuccessful = true, Token = token };
+            return new AuthResponseDto
+            {
+                IsAuthSuccessful = true,
+                Token = token,
+                UserId = user.Id,
+                Email = user.Email
+            };
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginDto loginDto)
@@ -73,7 +71,7 @@ namespace StudentCourseAPI.Services
                 return new AuthResponseDto { IsAuthSuccessful = false, Errors = new[] { "Email not confirmed yet" } };
             }
 
-            var token = _tokenService.CreateToken(user);
+            var token = await _tokenService.CreateToken(user);
 
             return new AuthResponseDto { IsAuthSuccessful = true, Token = token };
         }

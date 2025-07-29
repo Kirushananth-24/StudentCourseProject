@@ -10,21 +10,40 @@ using StudentCourseAPI.DTOs;
 
 namespace StudentCourseAPI.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
+    [ApiController]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        public AuthController(IAuthService authService)
+        private readonly IEmailService _emailService;
+        public AuthController(IAuthService authService, IEmailService emailService)
         {
             _authService = authService;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
+            var email = registerDto.UserName;
             var result = await _authService.RegisterAsync(registerDto);
-            if (!result.IsAuthSuccessful) return BadRequest(result);
-            return Ok(result);
+
+            if (!result.IsAuthSuccessful)
+                return BadRequest(result);
+
+            // Generate confirmation link inside the controller
+            var confirmationLink = Url.Action("ConfirmEmail", "Auth", new
+            {
+                userId = result.UserId,
+                token = System.Net.WebUtility.UrlEncode(result.Token)
+            }, Request.Scheme);
+
+            var emailSubject = "Email Confirmation";
+            var emailBody = $"Please confirm your email by clicking this link: {confirmationLink}";
+
+            await _emailService.SendEmailAsync(email, emailSubject, emailBody);
+
+            return Ok("Registration successful. Confirmation email sent.");
         }
 
         [HttpPost("login")]
@@ -38,6 +57,8 @@ namespace StudentCourseAPI.Controllers
         [HttpGet("confirmemail")]
         public async Task<IActionResult> ConfirmEmail(string userId, string token)
         {
+            token = System.Net.WebUtility.UrlDecode(token);
+
             var result = await _authService.ConfirmEmailAsync(userId, token);
 
             if (result.Succeeded)
@@ -45,7 +66,8 @@ namespace StudentCourseAPI.Controllers
                 return Ok("Email confirmed successfully!");
             }
 
-            return BadRequest("Email confirmation failed");
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return BadRequest($"Email confirmation failed: {errors}");
         }
     }
 }

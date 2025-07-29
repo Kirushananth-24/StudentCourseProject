@@ -1,3 +1,5 @@
---UPDATE AspNetUsers set EmailConfirmed = 1
+-- UPDATE AspNetUsers set EmailConfirmed = 1
 
-DELETE FROM AspNetUsers;
+--DELETE FROM AspNetUsers;
+
+--DELETE FROM Students
