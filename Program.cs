@@ -9,6 +9,7 @@ using System.Text;
 using StudentCourseAPI.Data.Repositories;
 using StudentCourseAPI.Data.Interfaces;
 using StudentCourseAPI.Services;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,16 +29,61 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddDefaultTokenProviders();
 
 // JWT Auth
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+// {
+//     options.TokenValidationParameters = new TokenValidationParameters
+//     {
+//         ValidateIssuerSigningKey = true,
+//         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["TokenKey"])),
+//         ValidateIssuer = false,
+//         ValidateAudience = false,
+//         ValidateLifetime = true,
+//         RoleClaimType = ClaimTypes.Role
+//     };
+
+//     options.Events = new JwtBearerEvents
+//     {
+//         OnChallenge = context =>
+//         {
+//             context.HandleResponse();
+//             context.Response.StatusCode = 401;
+//             context.Response.ContentType = "application/json";
+//             return context.Response.WriteAsync("{\"error\": \"Unauthorized\"}");
+//         }
+//     };
+// });
+
+builder.Services.AddAuthentication(options =>
 {
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    var key = builder.Configuration["TokenKey"];
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["TokenKey"])),
         ValidateIssuer = false,
         ValidateAudience = false,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+        RoleClaimType = ClaimTypes.Role
     };
+
+    // // 👇 Prevent redirect to /Account/Login
+    // options.Events = new JwtBearerEvents
+    // {
+    //     OnChallenge = context =>
+    //     {
+    //         context.HandleResponse(); // Suppress redirect
+    //         context.Response.StatusCode = 401;
+    //         context.Response.ContentType = "application/json";
+    //         return context.Response.WriteAsync("{\"error\": \"Unauthorized\"}");
+    //     }
+    // };
 });
+
 
 // Repositories
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
@@ -54,22 +100,22 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Auth header using Bearer scheme. Example: 'Bearer {token}'",
         Name = "Authorization",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey
     });
 
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                Reference = new OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -80,6 +126,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Only use HTTPS redirection in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+
 // Seed roles
 using (var scope = app.Services.CreateScope())
 {
@@ -87,14 +140,18 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedRolesAsync(roleManager);
 }
 
-// Middleware
-app.UseAuthentication();
+app.UseRouting();
 
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection(); // only in production
+}
+
+app.UseAuthentication();
 app.UseAuthorization();
-app.UseHttpsRedirection();
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.MapControllers();
-
 app.Run();
