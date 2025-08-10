@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using StudentCourseAPI.Data.Interfaces;
+using StudentCourseAPI.DTOs;
 using StudentCourseAPI.Models;
 
 namespace StudentCourseAPI.Controllers
@@ -38,7 +39,7 @@ namespace StudentCourseAPI.Controllers
 
         [HttpPost("createCourse")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateCourse([FromBody] Course course)
+        public async Task<IActionResult> CreateCourse([FromBody] CourseDto course)
         {
             var created = await _courseRepository.AddAsync(course);
             return CreatedAtAction(nameof(GetCourseById), new { id = created.Id }, created);
@@ -46,7 +47,7 @@ namespace StudentCourseAPI.Controllers
 
         [HttpPut("updateCourse/{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateCourse(int id, [FromBody] Course course)
+        public async Task<IActionResult> UpdateCourse(int id, [FromBody] CourseDto course)
         {
             if (id != course.Id)
                 return BadRequest();

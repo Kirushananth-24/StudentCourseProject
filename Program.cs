@@ -10,12 +10,16 @@ using StudentCourseAPI.Data.Repositories;
 using StudentCourseAPI.Data.Interfaces;
 using StudentCourseAPI.Services;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(x =>
+        x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles
+    );
 // builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();
 
@@ -89,6 +93,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IInstructorRepository, InstructorRepository>();
+builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -124,7 +129,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddCors(options =>
+  options.AddPolicy("AllowDev", p => p.AllowAnyHeader().AllowAnyMethod().AllowCredentials().WithOrigins("http://localhost:3000")));
 var app = builder.Build();
+
+
+app.UseCors("AllowDev");
 
 // Only use HTTPS redirection in production
 if (!app.Environment.IsDevelopment())
